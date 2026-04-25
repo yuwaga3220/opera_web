@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+pydantic
+# Optional: install in ROS2 environment when available
+# rclpy
+# sensor_msgs

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
-
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -34,15 +32,6 @@ def shutdown_event() -> None:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
-
-
-@app.get("/api/video-source")
-def video_source() -> dict[str, str]:
-    url = os.getenv(
-        "VIDEO_URL",
-        "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    )
-    return {"url": url}
 
 
 @app.get("/api/joint-angles")

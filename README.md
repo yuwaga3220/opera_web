@@ -1,31 +1,29 @@
-# Video + ROS2 Joint Angles Demo
+# ROS2 Joint Angles Monitor
 
-FastAPI バックエンドで以下を配信し、React (Vite) フロントエンドで表示する最小構成です。
+FastAPI backend receives ROS2 `/joint_states` data and exposes the current joint
+angles to a React (Vite) frontend. When ROS2 packages are not available, the
+backend falls back to mock sine-wave joint values so the UI can still be tested.
 
-- Web 上の動画 URL
-- ROS2 `/joint_states` の関節角度（未接続時はモックデータ）
+## Structure
 
-## 構成
-
-- `backend`: FastAPI API / WebSocket サーバー
-- `frontend`: React (Vite) クライアント
+- `backend`: FastAPI API and WebSocket server
+- `frontend`: React (Vite) client
 
 ```text
 Browser (React + Vite)
-  ├─ fetch  ---> FastAPI GET /api/video-source
-  ├─ video  ---> 動画URLを再生
-  └─ ws     ---> FastAPI WS /ws/joint-angles
-                    └─ ROS2 /joint_states (未接続時は mock)
+  └─ ws ---> FastAPI WS /ws/joint-angles
+                    └─ ROS2 /joint_states
+                       or mock joint angle provider
 ```
 
-## 前提
+## Requirements
 
-- Python 3.10 以上
-- Node.js 18 以上
+- Python 3.10+
+- Node.js 18+
 - npm
-- (任意) ROS2 環境 + `rclpy`, `sensor_msgs`
+- Optional: ROS2 environment with `rclpy` and `sensor_msgs`
 
-## 1. Backend (FastAPI)
+## Backend
 
 ```bash
 cd backend
@@ -35,11 +33,22 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Optional 環境変数
+When reading a ROS2 topic, start the backend from a shell where ROS2 is already
+sourced:
 
-- `VIDEO_URL`: 配信動画 URL（未指定時は Big Buck Bunny）
+```bash
+source /opt/ros/<distro>/setup.bash
+source <your_ros2_workspace>/install/setup.bash
+ROS_JOINT_TOPIC=/joint_states uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-## 2. Frontend (React)
+If your publisher uses `/joint_state` instead of `/joint_states`, set:
+
+```bash
+ROS_JOINT_TOPIC=/joint_state uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+## Frontend
 
 ```bash
 cd frontend
@@ -47,29 +56,17 @@ npm install
 npm run dev
 ```
 
-ブラウザ: `http://localhost:5173`
-
-## 動作確認
-
-1. `http://localhost:8000/health` で `{"status":"ok"}` が返る
-2. React 画面で動画が再生される
-3. Joint Angles が定期更新される（`source` が `ros2` または `mock`）
+Open `http://localhost:5173`.
 
 ## API Endpoints
 
 - `GET /health`
-- `GET /api/video-source`
 - `GET /api/joint-angles`
 - `WS  /ws/joint-angles`
 
-## ROS2 連携について
+## ROS2 Integration
 
-- `rclpy` と `sensor_msgs` が使える環境では `/joint_states` を購読します。
-- ROS2 が利用できない環境では、サイン波の疑似角度を返します。
-
-## よくあるつまずき
-
-- `npm install` で失敗する: Node.js のバージョンを確認（18+ 推奨）
-- React 画面が空白: `frontend` の開発サーバー起動ログを確認
-- 動画が再生されない: `VIDEO_URL` がブラウザからアクセス可能か確認
-- 角度が更新されない: `http://localhost:8000/api/joint-angles` のレスポンスを確認
+- If `rclpy` and `sensor_msgs` are available, the backend subscribes to
+  `ROS_JOINT_TOPIC`, which defaults to `/joint_states`.
+- If ROS2 is not available, the backend publishes mock joint angles with
+  `source: "mock"`.

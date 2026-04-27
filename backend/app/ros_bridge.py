@@ -49,7 +49,12 @@ class JointAnglesProvider:
         with self._lock:
             return self._state.to_dict()
 
-    def _set_state(self, names: List[str], positions: List[float], source: str) -> None:
+    def _set_state(
+        self, 
+        names: List[str], 
+        positions: List[float], 
+        source: str
+        ) -> None:
         with self._lock:
             self._state = JointAnglesState(
                 names=names,
@@ -91,7 +96,8 @@ class JointAnglesProvider:
             self._mode = "mock"
 
         # フォールバック: 疑似データ
-        joint_names = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
+        joint_names = ["joint_1", "joint_2", "joint_3", 
+                       "joint_4", "joint_5", "joint_6"]
         t = 0.0
         while self._running:
             positions = [math.sin(t + i * 0.6) for i in range(len(joint_names))]

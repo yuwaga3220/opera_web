@@ -38,80 +38,45 @@ export default function App() {
     : "--";
 
   return (
-    <main className="container">
-      <header className="header">
-        <div>
-          <p className="eyebrow">ROS2 /joint_states</p>
-          <h1>Joint Angles Monitor</h1>
-        </div>
-        <div className={`status status-${connectionStatus}`}>
-          {connectionStatus}
-        </div>
-      </header>
+    <main>
+      <h1>Camera Stream (MJPEG)</h1>
+      <img
+        src="http://127.0.0.1:8081/stream.mjpg"
+        alt="mjpeg stream"
+        width="640"
+      />
 
-      <section className="summary" aria-label="Joint angle summary">
-        <div>
-          <span className="label">Source</span>
-          <strong>{jointData.source}</strong>
-        </div>
-        <div>
-          <span className="label">Joints</span>
-          <strong>{jointData.names.length}</strong>
-        </div>
-        <div>
-          <span className="label">Updated</span>
-          <strong>{updatedAt}</strong>
-        </div>
-        <div>
-          <span className="label">Topic</span>
-          <strong>{jointData.topic || "/joint_states"}</strong>
-        </div>
-      </section>
-
+      <h1>Joint angles</h1>
+      <p>
+        WebSocket: {connectionStatus} | Source: {jointData.source} | Joints:{" "}
+        {jointData.names.length} | Updated: {updatedAt} | Topic:{" "}
+        {jointData.topic || "/joint_states"}
+      </p>
       {jointData.error ? (
-        <section className="error-panel" role="alert">
-          <span className="label">ROS2 fallback reason</span>
-          <code>{jointData.error}</code>
-        </section>
+        <p>
+          ROS2 note: <code>{jointData.error}</code>
+        </p>
       ) : null}
-
-      <section className="joint-grid" aria-label="Joint angles">
-        {hasJoints ? (
-          jointData.names.map((name, idx) => {
-            const angle = Number(jointData.positions[idx] ?? 0);
-            const normalized = Math.max(-1, Math.min(1, angle / Math.PI));
-            const percent = ((normalized + 1) / 2) * 100;
-
-            return (
-              <article className="joint-card" key={name}>
-                <div className="joint-card-header">
-                  <h2>{name}</h2>
-                  <span>{angle.toFixed(3)} rad</span>
-                </div>
-                <div className="angle-track" aria-hidden="true">
-                  <div
-                    className="angle-fill"
-                    style={{ width: `${percent}%` }}
-                  />
-                  <div
-                    className="angle-marker"
-                    style={{ left: `${percent}%` }}
-                  />
-                </div>
-                <div className="angle-scale">
-                  <span>-pi</span>
-                  <span>0</span>
-                  <span>pi</span>
-                </div>
-              </article>
-            );
-          })
-        ) : (
-          <div className="empty-state">
-            Waiting for joint angle data from ROS2 or mock provider.
-          </div>
-        )}
-      </section>
+      {hasJoints ? (
+        <table border="1" cellPadding="6">
+          <thead>
+            <tr>
+              <th>Joint</th>
+              <th>Angle (rad)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {jointData.names.map((name, idx) => (
+              <tr key={name}>
+                <td>{name}</td>
+                <td>{Number(jointData.positions[idx] ?? 0).toFixed(4)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p>Waiting for joint angle data (ROS2 or mock).</p>
+      )}
     </main>
   );
 }

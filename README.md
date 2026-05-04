@@ -33,6 +33,14 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+### Backend (next time)
+
+```bash
+cd backend
+source .venv/bin/activate
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
 When reading a ROS2 topic, start the backend from a shell where ROS2 is already
 sourced:
 
@@ -56,7 +64,35 @@ npm install
 npm run dev
 ```
 
+### Frontend (next time)
+
+```bash
+cd frontend
+npm run dev
+```
+
 Open `http://localhost:5173`.
+
+## Next startup checklist (backend + frontend)
+
+Open 2 terminals and run:
+
+Terminal 1:
+
+```bash
+cd backend
+source .venv/bin/activate
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Terminal 2:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Then open `http://localhost:5173`.
 
 ## API Endpoints
 

@@ -3,34 +3,23 @@ import { useEffect, useRef, useState } from "react";
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
 const WS_BASE = toWsBase(API_BASE);
 
-const ICE_SERVERS = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-};
+/** ローカル開発は host 候補のみ（STUN 待ちでタイムアウトしにくい）。本番は .env で指定可。 */
+function parseIceServers() {
+  const raw = import.meta.env.VITE_ICE_SERVERS;
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      console.warn("VITE_ICE_SERVERS is invalid JSON, using no STUN");
+    }
+  }
+  return { iceServers: [] };
+}
+
+const ICE_SERVERS = parseIceServers();
 
 function toWsBase(apiBase) {
   return apiBase.replace(/^http/i, "ws");
-}
-
-function waitIceGatheringComplete(pc) {
-  if (pc.iceGatheringState === "complete") {
-    return Promise.resolve();
-  }
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error("ICE gathering timeout")),
-      15000,
-    );
-    pc.addEventListener(
-      "icegatheringstatechange",
-      () => {
-        if (pc.iceGatheringState === "complete") {
-          clearTimeout(timer);
-          resolve();
-        }
-      },
-      { once: true },
-    );
-  });
 }
 
 export default function App() {
@@ -46,6 +35,7 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = useState("connecting");
   const [webrtcStatus, setWebrtcStatus] = useState("connecting");
   const [webrtcError, setWebrtcError] = useState("");
+  const [videoStatus, setVideoStatus] = useState(null);
 
   useEffect(() => {
     const ws = new WebSocket(`${WS_BASE}/ws/joint-angles`);
@@ -59,6 +49,22 @@ export default function App() {
     ws.onclose = () => setConnectionStatus("disconnected");
 
     return () => ws.close();
+  }, []);
+
+  useEffect(() => {
+    async function pollVideoStatus() {
+      try {
+        const res = await fetch(`${API_BASE}/api/video-status`);
+        if (res.ok) {
+          setVideoStatus(await res.json());
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    pollVideoStatus();
+    const id = setInterval(pollVideoStatus, 2500);
+    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
@@ -117,6 +123,22 @@ export default function App() {
         }
       };
 
+      pc.onconnectionstatechange = () => {
+        if (cancelled) {
+          return;
+        }
+        if (pc.connectionState === "connected") {
+          setWebrtcStatus("connected");
+          setWebrtcError("");
+        } else if (
+          pc.connectionState === "failed" ||
+          pc.connectionState === "disconnected"
+        ) {
+          setWebrtcStatus("error");
+          setWebrtcError(`WebRTC: ${pc.connectionState}`);
+        }
+      };
+
       pc.onicecandidate = (ev) => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
           return;
@@ -133,10 +155,10 @@ export default function App() {
       pc.addTransceiver("video", { direction: "recvonly" });
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      await waitIceGatheringComplete(pc);
       if (cancelled) {
         return;
       }
+      // Trickle ICE: offer を先に送り、候補は onicecandidate で追送する
       ws.send(
         JSON.stringify({
           type: "offer",
@@ -164,6 +186,18 @@ export default function App() {
     };
   }, []);
 
+  let unityHint = "";
+  if (videoStatus) {
+    if (!videoStatus.unity_connected) {
+      unityHint = "Unity からの映像待ち（ws://…/ws/unity-video に JPEG を送信）";
+    } else if (videoStatus.frame_stale) {
+      unityHint =
+        "映像の更新が止まっています（Unity の WebSocket が切れた可能性。ClientWebSocket で ReceiveAsync ループを追加）";
+    } else if (!videoStatus.has_frame) {
+      unityHint = "Unity 接続済み・フレーム待ち";
+    }
+  }
+
   const hasJoints = jointData.names.length > 0;
   const updatedAt = jointData.timestamp
     ? new Date(jointData.timestamp * 1000).toLocaleTimeString()
@@ -171,13 +205,26 @@ export default function App() {
 
   return (
     <main>
-      <h1>Camera (WebRTC)</h1>
+      <h1>Camera (WebRTC · Unity)</h1>
       <p>
         WebRTC: {webrtcStatus}
-        {webrtcError ? (
+        {videoStatus ? (
           <>
             {" "}
-            | <span>{webrtcError}</span>
+            | Source: {videoStatus.video_source}
+            {videoStatus.unity_connected ? " | Unity: connected" : " | Unity: not connected"}
+          </>
+        ) : null}
+        {unityHint ? (
+          <>
+            <br />
+            {unityHint}
+          </>
+        ) : null}
+        {webrtcError ? (
+          <>
+            <br />
+            <span>{webrtcError}</span>
           </>
         ) : null}
       </p>

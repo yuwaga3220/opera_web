@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 pydantic
 numpy
+Pillow
 aiortc
 # Optional: install in ROS2 environment when available
 # rclpy

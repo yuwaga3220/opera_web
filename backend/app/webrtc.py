@@ -11,6 +11,8 @@ from aiortc.sdp import candidate_from_sdp
 from av import VideoFrame
 from fastapi import WebSocket, WebSocketDisconnect
 
+from .frame_hub import FrameHub, get_frame_hub, get_video_source
+
 logger = logging.getLogger(__name__)
 
 
@@ -44,7 +46,33 @@ class ServerVideoTrack(VideoStreamTrack):
         return frame
 
 
-async def _wait_ice_complete(pc: RTCPeerConnection) -> None:
+class UnityVideoTrack(VideoStreamTrack):
+    """Unity から FrameHub 経由で受け取った映像を WebRTC で配信する。"""
+
+    kind = "video"
+
+    def __init__(self, hub: FrameHub) -> None:
+        super().__init__()
+        self._hub = hub
+
+    async def recv(self) -> VideoFrame:
+        pts, time_base = await self.next_timestamp()
+        frame = await self._hub.get_frame_for_webrtc()
+        arr = frame.to_ndarray(format="rgb24")
+        out = VideoFrame.from_ndarray(arr, format="rgb24")
+        out.pts = pts
+        out.time_base = time_base
+        return out
+
+
+def create_video_track() -> VideoStreamTrack:
+    if get_video_source() == "test":
+        return ServerVideoTrack()
+    return UnityVideoTrack(get_frame_hub())
+
+
+async def _wait_ice_complete(pc: RTCPeerConnection, timeout: float = 3.0) -> None:
+    """ICE 収集完了を短く待つ。ローカル開発では trickle で足りるため長く待たない。"""
     if pc.iceGatheringState == "complete":
         return
     loop = asyncio.get_running_loop()
@@ -57,7 +85,10 @@ async def _wait_ice_complete(pc: RTCPeerConnection) -> None:
 
     if pc.iceGatheringState == "complete":
         return
-    await asyncio.wait_for(fut, timeout=15.0)
+    try:
+        await asyncio.wait_for(fut, timeout=timeout)
+    except asyncio.TimeoutError:
+        logger.debug("ICE gathering still in progress after %.1fs, continuing", timeout)
 
 
 def _ice_from_browser(init: dict[str, Any]) -> Optional[RTCIceCandidate]:
@@ -79,7 +110,7 @@ async def webrtc_signaling(websocket: WebSocket) -> None:
     """
     await websocket.accept()
     pc = RTCPeerConnection()
-    pc.addTrack(ServerVideoTrack())
+    pc.addTrack(create_video_track())
     pending_ice: list[Optional[RTCIceCandidate]] = []
     remote_set = False
 

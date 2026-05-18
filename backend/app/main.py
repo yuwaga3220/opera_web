@@ -5,8 +5,9 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from .ros_bridge import JointAnglesProvider
+from .webrtc import webrtc_signaling
 
-app = FastAPI(title="Video + ROS2 Joint Angles API")
+app = FastAPI(title="WebRTC + ROS2 Joint Angles API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,3 +49,8 @@ async def joint_angles_ws(websocket: WebSocket) -> None:
             await asyncio.sleep(0.2)
     except WebSocketDisconnect:
         return
+
+
+@app.websocket("/ws/webrtc")
+async def webrtc_ws(websocket: WebSocket) -> None:
+    await webrtc_signaling(websocket)

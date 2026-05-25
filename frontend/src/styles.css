@@ -1,0 +1,104 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+}
+
+.app-shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.topbar,
+.telemetry-header,
+.status-row,
+.hint-line {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.video-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #111;
+  overflow: hidden;
+}
+
+.video-stage video,
+.ar-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.video-stage video {
+  object-fit: contain;
+}
+
+.ar-canvas {
+  pointer-events: none;
+}
+
+.ar-hud,
+.ar-caption {
+  position: absolute;
+  z-index: 1;
+  padding: 8px;
+  background: rgb(0 0 0 / 60%);
+  color: white;
+}
+
+.ar-hud {
+  top: 8px;
+  left: 8px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ar-hud span,
+.summary-grid span {
+  display: block;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.ar-caption {
+  right: 8px;
+  bottom: 8px;
+}
+
+.summary-grid,
+.joint-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.summary-grid > div,
+.joint-card,
+.error-panel,
+.empty-state {
+  border: 1px solid #ccc;
+  padding: 8px;
+}
+
+.joint-card h3 {
+  margin: 0;
+}
+
+.joint-meter {
+  height: 8px;
+  background: #ddd;
+}
+
+.joint-meter span {
+  display: block;
+  height: 100%;
+  background: #0a84ff;
+}
